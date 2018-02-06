@@ -44,7 +44,6 @@
 /* TODO: insert other include files here. */
 
 /* TODO: insert other definitions and declarations here. */
-#define ACC_CONST_PER_LSB (0.000061)
 
 #define turn_red_led_on GPIO_ClearPinsOutput(GPIOB, 1 << 22);
 #define turn_red_led_off GPIO_SetPinsOutput(GPIOB, 1 << 22);
@@ -54,6 +53,7 @@ volatile bool g_MasterCompletionFlag = false;
 typedef enum
 {
 	x_axis = 0, y_axis, z_axis
+
 } axis_definition;
 
 static void i2c_master_callback(I2C_Type *base, i2c_master_handle_t *handle,
@@ -137,9 +137,8 @@ int main(void)
 	g_MasterCompletionFlag = false;
 
 	/* Force the counter to be placed into memory. */
-	uint8_t data_buffer[6];
-	int16_t accelerometer[3];
-	float gs[3];
+	volatile uint8_t data_buffer[6];
+	volatile int16_t accelerometer[3];
 	/* Enter an infinite loop, just incrementing a counter. */
 	while (1)
 	{
@@ -161,14 +160,13 @@ int main(void)
 		accelerometer[y_axis] = data_buffer[2] << 8 | data_buffer[3];
 		accelerometer[z_axis] = data_buffer[4] << 8 | data_buffer[5];
 
-		gs[x_axis] = ((float) accelerometer[x_axis]) * (ACC_CONST_PER_LSB);
-		gs[y_axis] = ((float) accelerometer[y_axis]) * (ACC_CONST_PER_LSB);
-		gs[z_axis] = ((float) accelerometer[z_axis]) * (ACC_CONST_PER_LSB);
-
-		if( ( gs[x_axis] < 0.2 ) && ( gs[y_axis] < 0.2 ) && ( gs[z_axis] < 0.2 ) )
+		if( ( 163 >= accelerometer[x_axis] && -163 <= accelerometer[x_axis]) &&
+				( 163 >= accelerometer[y_axis] && -163 <= accelerometer[y_axis] ) &&
+				( 163 >= accelerometer[z_axis] && -163 <= accelerometer[z_axis] ) )
 		{
 			turn_red_led_on;
 		}
+
 		else
 		{
 			turn_red_led_off;
