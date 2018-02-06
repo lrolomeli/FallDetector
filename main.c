@@ -44,7 +44,7 @@
 /* TODO: insert other include files here. */
 
 /* TODO: insert other definitions and declarations here. */
-#define ACC_CONST_PER_LSB 0.000061
+#define ACC_CONST_PER_LSB (0.000061)
 
 #define turn_red_led_on GPIO_ClearPinsOutput(GPIOB, 1 << 22);
 #define turn_red_led_off GPIO_SetPinsOutput(GPIOB, 1 << 22);
@@ -54,7 +54,7 @@ volatile bool g_MasterCompletionFlag = false;
 typedef enum
 {
 	x_axis = 0, y_axis, z_axis
-};
+} axis_definition;
 
 static void i2c_master_callback(I2C_Type *base, i2c_master_handle_t *handle,
         status_t status, void * userData)
@@ -95,20 +95,18 @@ int main(void)
 	kPORT_MuxAsGpio, /*Modo GPIO*/
 	kPORT_UnlockRegister }; /**/
 
-	PORT_SetPinConfig(PORTB, 22, &config_led);
-
-	gpio_pin_config_t led_config =
-	{ kGPIO_DigitalOutput, 1 };
-
-	GPIO_PinInit(GPIOB, 22, &led_config);
-
 	port_pin_config_t config_i2c =
 	{ kPORT_PullDisable, kPORT_SlowSlewRate, kPORT_PassiveFilterDisable,
 	        kPORT_OpenDrainDisable, kPORT_LowDriveStrength, kPORT_MuxAlt5,
 	        kPORT_UnlockRegister, };
 
+	PORT_SetPinConfig(PORTB, 22, &config_led);
 	PORT_SetPinConfig(PORTE, 24, &config_i2c);
 	PORT_SetPinConfig(PORTE, 25, &config_i2c);
+
+	gpio_pin_config_t led_config = { kGPIO_DigitalOutput, 1 };
+
+	GPIO_PinInit(GPIOB, 22, &led_config);
 
 	i2c_master_config_t masterConfig;
 	I2C_MasterGetDefaultConfig(&masterConfig);
@@ -121,24 +119,6 @@ int main(void)
 	NULL);
 
 	i2c_master_transfer_t masterXfer;
-#if 0
-	//uint8_t data_buffer = 0x0D;
-
-	masterXfer.slaveAddress = 0x1D;
-	masterXfer.direction = kI2C_Write;
-	masterXfer.subaddress = 0;
-	masterXfer.subaddressSize = 0;
-	masterXfer.data = &data_buffer;
-	masterXfer.dataSize = 1;
-	masterXfer.flags = kI2C_TransferNoStopFlag;
-
-	I2C_MasterTransferNonBlocking(I2C0, &g_m_handle,
-			&masterXfer);
-	while (!g_MasterCompletionFlag)
-	{}
-	g_MasterCompletionFlag = false;
-
-#else
 
 	uint8_t write_data = 0x01;
 
@@ -156,12 +136,10 @@ int main(void)
 	}
 	g_MasterCompletionFlag = false;
 
-#endif
-
 	/* Force the counter to be placed into memory. */
 	uint8_t data_buffer[6];
 	int16_t accelerometer[3];
-	uint8_t gs;
+	float gs[3];
 	/* Enter an infinite loop, just incrementing a counter. */
 	while (1)
 	{
@@ -171,7 +149,7 @@ int main(void)
 		masterXfer.subaddressSize = 1;
 		masterXfer.data = data_buffer;
 		masterXfer.dataSize = 6;
-		masterXfer.flags = kI2C_TransferNoStopFlag;
+		masterXfer.flags = kI2C_TransferDefaultFlag;
 
 		I2C_MasterTransferNonBlocking(I2C0, &g_m_handle, &masterXfer);
 		while (!g_MasterCompletionFlag)
@@ -183,14 +161,17 @@ int main(void)
 		accelerometer[y_axis] = data_buffer[2] << 8 | data_buffer[3];
 		accelerometer[z_axis] = data_buffer[4] << 8 | data_buffer[5];
 
-		gs = (uint8_t) (((float) accelerometer[z_axis] * ACC_CONST_PER_LSB));
-		if (gs)
+		gs[x_axis] = ((float) accelerometer[x_axis]) * (ACC_CONST_PER_LSB);
+		gs[y_axis] = ((float) accelerometer[y_axis]) * (ACC_CONST_PER_LSB);
+		gs[z_axis] = ((float) accelerometer[z_axis]) * (ACC_CONST_PER_LSB);
+
+		if( ( gs[x_axis] < 0.2 ) && ( gs[y_axis] < 0.2 ) && ( gs[z_axis] < 0.2 ) )
 		{
-			turn_red_led_off;
+			turn_red_led_on;
 		}
 		else
 		{
-			turn_red_led_on;
+			turn_red_led_off;
 		}
 
 	}
