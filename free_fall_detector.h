@@ -16,6 +16,7 @@
 #include "fsl_debug_console.h"
 #include "fsl_port.h"
 #include "fsl_i2c.h"
+#include "fsl_pit.h"
 
 #define NUMBER_OF_AXIS 3
 #define REGISTER_AXIS_ACCELEROMETER 6
@@ -24,6 +25,11 @@
 #define RED_LED_PIN 0x400000
 #define turn_red_led_on GPIO_ClearPinsOutput(GPIOB, RED_LED_PIN);
 #define turn_red_led_off GPIO_SetPinsOutput(GPIOB, RED_LED_PIN);
+
+#define PIT_LED_HANDLER PIT0_IRQHandler
+#define PIT_IRQ_ID PIT0_IRQn
+/* Get source clock for PIT driver */
+#define PIT_SOURCE_CLOCK CLOCK_GetFreq(kCLOCK_BusClk)
 
 typedef enum
 {
@@ -42,8 +48,12 @@ void config_fall_detector_led();
 
 void config_fall_detector_i2c();
 
+void config_fall_detector_pit();
+
 void enable_i2c_accelerometer();
 
 void fall_detector();
+
+void toggle_red_led();
 
 #endif /* FREE_FALL_DETECTOR_H_ */

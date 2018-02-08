@@ -60,6 +60,7 @@ int main(void)
 
 	config_fall_detector_led();
 	config_fall_detector_i2c();
+	config_fall_detector_pit();
 	enable_i2c_accelerometer();
 
 	for (;;)

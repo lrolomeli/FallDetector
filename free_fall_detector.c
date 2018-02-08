@@ -5,18 +5,27 @@ static i2c_master_handle_t g_m_handle;
 
 static uint8_t data_buffer[REGISTER_AXIS_ACCELEROMETER];
 static int16_t accelerometer[NUMBER_OF_AXIS];
+static volatile bool pitIsrFlag = false;
 
 static volatile bool g_MasterCompletionFlag = false;
 
 static const int16_t equivalent_five_percent_error = 1450;
 
+void PIT_LED_HANDLER(void)
+{
+	/* Clear interrupt flag.*/
+	PIT_ClearStatusFlags(PIT, kPIT_Chnl_0, kPIT_TimerFlag);
+	pitIsrFlag = true;
+
+}
+
 static void i2c_release_bus_delay(void)
 {
-    uint32_t i = 0;
-    for (i = 0; i < 100; i++)
-    {
-        __NOP();
-    }
+	uint32_t i = 0;
+	for (i = 0; i < 100; i++)
+	{
+		__NOP();
+	}
 }
 
 void i2c_ReleaseBus()
@@ -85,7 +94,7 @@ void config_fall_detector_led()
 
 	/*Configurar el puerto para encender un LED*/
 	/* Input pin PORT configuration */
-	port_pin_config_t config_led =
+	static port_pin_config_t config_led =
 	{ kPORT_PullDisable, /*Resistencias deshabilitadas*/
 	kPORT_SlowSlewRate, /*SlewRate menor velocidad*/
 	kPORT_PassiveFilterEnable, /*Filtro habilitado*/
@@ -107,7 +116,7 @@ void config_fall_detector_i2c()
 	CLOCK_EnableClock(kCLOCK_PortE);
 	CLOCK_EnableClock(kCLOCK_I2c0);
 
-	port_pin_config_t config_i2c =
+	static port_pin_config_t config_i2c =
 	{ kPORT_PullDisable, kPORT_SlowSlewRate, kPORT_PassiveFilterDisable,
 	        kPORT_OpenDrainDisable, kPORT_LowDriveStrength, kPORT_MuxAlt5,
 	        kPORT_UnlockRegister };
@@ -115,14 +124,41 @@ void config_fall_detector_i2c()
 	PORT_SetPinConfig(PORTE, 24, &config_i2c);
 	PORT_SetPinConfig(PORTE, 25, &config_i2c);
 
-	i2c_master_config_t masterConfig;
+	static i2c_master_config_t masterConfig;
+
 	I2C_MasterGetDefaultConfig(&masterConfig);
 	masterConfig.baudRate_Bps = 100000;
+
 	I2C_MasterInit(I2C0, &masterConfig, CLOCK_GetFreq(kCLOCK_BusClk));
 
 	I2C_MasterTransferCreateHandle(I2C0, &g_m_handle, i2c_master_callback,
 	        NULL);
 
+}
+
+void config_fall_detector_pit()
+{
+	/* Structure of initialize PIT */
+	pit_config_t pitConfig;
+	/*
+	 * pitConfig.enableRunInDebug = false;
+	 */
+	PIT_GetDefaultConfig(&pitConfig);
+
+	/* Init pit module */
+	PIT_Init(PIT, &pitConfig);
+
+	/* Set timer period for channel 0 */
+	PIT_SetTimerPeriod(PIT, kPIT_Chnl_0,
+	        USEC_TO_COUNT(125000U, PIT_SOURCE_CLOCK));
+
+	/* Enable timer interrupts for channel 0 */
+	PIT_EnableInterrupts(PIT, kPIT_Chnl_0, kPIT_TimerInterruptEnable);
+
+	/* Enable at the NVIC */
+	EnableIRQ(PIT_IRQ_ID);
+
+	PIT_StartTimer(PIT, kPIT_Chnl_0);
 }
 
 void enable_i2c_accelerometer()
@@ -175,13 +211,28 @@ void fall_detector()
 	        && (equivalent_five_percent_error >= accelerometer[z_axis])
 	        && (-equivalent_five_percent_error <= accelerometer[z_axis]))
 	{
-		turn_red_led_on;
+		if(pitIsrFlag)
+		{
+			toggle_red_led();
+		}
 	}
 
 	else
 	{
 		turn_red_led_off;
 	}
+
+}
+
+void toggle_red_led()
+{
+	static bool state;
+
+	/*Escribimos el led segun el valor de state*/
+	GPIO_WritePinOutput (GPIOB, 22, state);
+
+	/*Si state es igual a 0 entonces se hace 1 y al revés*/
+	state = ( false == state ) ? true : false;
 
 }
 
