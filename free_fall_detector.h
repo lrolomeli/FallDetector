@@ -36,6 +36,8 @@ typedef enum
 	X_ACC_MSB = 0, X_ACC_LSB, Y_ACC_MSB, Y_ACC_LSB, Z_ACC_MSB, Z_ACC_LSB
 } acc_register_axis_definition;
 
+void i2c_ReleaseBus();
+
 void config_fall_detector_led();
 
 void config_fall_detector_i2c();

@@ -55,6 +55,7 @@ int main(void)
 	BOARD_InitBootClocks();
 	BOARD_InitBootPeripherals();
 	/* Init FSL debug console. */
+	i2c_ReleaseBus();
 	BOARD_InitDebugConsole();
 
 	config_fall_detector_led();

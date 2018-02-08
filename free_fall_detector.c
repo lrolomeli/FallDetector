@@ -8,7 +8,65 @@ static int16_t accelerometer[NUMBER_OF_AXIS];
 
 static volatile bool g_MasterCompletionFlag = false;
 
-static const int16_t equivalent_five_percent_error = 820;
+static const int16_t equivalent_five_percent_error = 1450;
+
+static void i2c_release_bus_delay(void)
+{
+    uint32_t i = 0;
+    for (i = 0; i < 100; i++)
+    {
+        __NOP();
+    }
+}
+
+void i2c_ReleaseBus()
+{
+	uint8_t i = 0;
+	gpio_pin_config_t pin_config;
+	port_pin_config_t i2c_pin_config =
+	{ 0 };
+
+	/* Config pin mux as gpio */
+	i2c_pin_config.pullSelect = kPORT_PullUp;
+	i2c_pin_config.mux = kPORT_MuxAsGpio;
+
+	pin_config.pinDirection = kGPIO_DigitalOutput;
+	pin_config.outputLogic = 1U;
+	CLOCK_EnableClock(kCLOCK_PortE);
+	PORT_SetPinConfig(PORTE, 24, &i2c_pin_config);
+	PORT_SetPinConfig(PORTE, 25, &i2c_pin_config);
+
+	GPIO_PinInit(GPIOE, 24, &pin_config);
+	GPIO_PinInit(GPIOE, 25, &pin_config);
+
+	GPIO_PinWrite(GPIOE, 25, 0U);
+	i2c_release_bus_delay();
+
+	for (i = 0; i < 9; i++)
+	{
+		GPIO_PinWrite(GPIOE, 24, 0U);
+		i2c_release_bus_delay();
+
+		GPIO_PinWrite(GPIOE, 25, 1U);
+		i2c_release_bus_delay();
+
+		GPIO_PinWrite(GPIOE, 24, 1U);
+		i2c_release_bus_delay();
+		i2c_release_bus_delay();
+	}
+
+	GPIO_PinWrite(GPIOE, 24, 0U);
+	i2c_release_bus_delay();
+
+	GPIO_PinWrite(GPIOE, 25, 0U);
+	i2c_release_bus_delay();
+
+	GPIO_PinWrite(GPIOE, 24, 1U);
+	i2c_release_bus_delay();
+
+	GPIO_PinWrite(GPIOE, 25, 1U);
+	i2c_release_bus_delay();
+}
 
 static void i2c_master_callback(I2C_Type *base, i2c_master_handle_t *handle,
         status_t status, void * userData)
